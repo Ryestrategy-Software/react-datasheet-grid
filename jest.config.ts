@@ -6,6 +6,7 @@ const config: Config.InitialOptions = {
   testEnvironment: 'jsdom',
   setupFiles: ['./tests/setup.ts'],
   testPathIgnorePatterns: ['./dist'],
+  coverageProvider: 'v8',
   collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}'],
   moduleNameMapper: {
     '\\.css$': '<rootDir>/tests/helpers/styleMock.ts',

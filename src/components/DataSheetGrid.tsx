@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -73,6 +74,7 @@ export const DataSheetGrid = React.memo(
         headerRowHeight = typeof rowHeight === 'number' ? rowHeight : 40,
         gutterColumn,
         stickyRightColumn,
+        stickyFirstColumn = false,
         rowKey,
   addRowsComponent: AddRowsComponent = AddRows as (props: AddRowsComponentProps & { onAddClick?: (count: number) => void }) => React.ReactElement | null,
         createRow = DEFAULT_CREATE_ROW as () => T,
@@ -106,6 +108,19 @@ export const DataSheetGrid = React.memo(
       const outerRef = useRef<HTMLDivElement>(null)
       const beforeTabIndexRef = useRef<HTMLDivElement>(null)
       const afterTabIndexRef = useRef<HTMLDivElement>(null)
+      // ponytail: only the first data column can freeze; extend the API when more pinned columns are needed.
+      const [scrollLeft, setScrollLeft] = useState(0)
+      const handleScroll = useCallback<React.UIEventHandler<HTMLDivElement>>(
+        (event) => {
+          if (stickyFirstColumn) setScrollLeft(event.currentTarget.scrollLeft)
+          onScroll?.(event)
+        },
+        [stickyFirstColumn, onScroll]
+      )
+      useLayoutEffect(() => {
+        if (stickyFirstColumn && outerRef.current)
+          setScrollLeft(outerRef.current.scrollLeft)
+      }, [stickyFirstColumn])
 
       // Default value is 1 for the border
       const [heightDiff, setHeightDiff] = useDebounceState(1, 100)
@@ -137,7 +152,7 @@ export const DataSheetGrid = React.memo(
         totalWidth: contentWidth,
         columnWidths,
         columnRights,
-      } = useColumnWidths(columns, width)
+      } = useColumnWidths(columns, width, stickyFirstColumn)
 
       // x,y coordinates of the right click
       const [contextMenu, setContextMenu] = useState<{
@@ -284,7 +299,8 @@ export const DataSheetGrid = React.memo(
         ): Cell | null => {
           const innerBoundingClientRect = getInnerBoundingClientRect(force)
           const outerBoundingClientRect =
-            includeSticky && getOuterBoundingClientRect(force)
+            (includeSticky || stickyFirstColumn) &&
+            getOuterBoundingClientRect(force)
 
           if (innerBoundingClientRect && columnRights && columnWidths) {
             let x = event.clientX - innerBoundingClientRect.left
@@ -292,16 +308,20 @@ export const DataSheetGrid = React.memo(
 
             if (outerBoundingClientRect) {
               if (
-                event.clientY - outerBoundingClientRect.top <=
-                headerRowHeight
+                includeSticky &&
+                event.clientY - outerBoundingClientRect.top <= headerRowHeight
               ) {
                 y = 0
               }
 
+              const viewportX = event.clientX - outerBoundingClientRect.left
               if (
-                event.clientX - outerBoundingClientRect.left <=
-                columnWidths[0]
+                stickyFirstColumn &&
+                viewportX < columnWidths[0] + (columnWidths[1] || 0)
               ) {
+                x = viewportX
+              }
+              if (includeSticky && viewportX <= columnWidths[0]) {
                 x = 0
               }
 
@@ -331,6 +351,7 @@ export const DataSheetGrid = React.memo(
           headerRowHeight,
           hasStickyRightColumn,
           getRowIndex,
+          stickyFirstColumn,
         ]
       )
 
@@ -460,10 +481,14 @@ export const DataSheetGrid = React.memo(
             columnRights &&
             columnWidths &&
             outerRef.current &&
-            !cell.doNotScrollX
+            !cell.doNotScrollX &&
+            !(stickyFirstColumn && cell.col === 0)
           ) {
             // Align left
-            const leftMax = columnRights[cell.col] - columnRights[0]
+            const leftMax =
+              columnRights[cell.col] -
+              columnWidths[0] -
+              (stickyFirstColumn ? columnWidths[1] || 0 : 0)
             // Align right
             const leftMin =
               columnRights[cell.col] +
@@ -490,23 +515,35 @@ export const DataSheetGrid = React.memo(
           columnRights,
           columnWidths,
           getRowSize,
+          stickyFirstColumn,
           hasStickyRightColumn,
         ]
       )
 
+      // A presentation toggle must not scroll an existing selection back into view.
+      const previousStickyFirstColumn = useRef(stickyFirstColumn)
       // Scroll to the selectionCell cell when it changes
       useEffect(() => {
-        if (selectionCell) {
+        if (
+          selectionCell &&
+          previousStickyFirstColumn.current === stickyFirstColumn
+        ) {
           scrollTo(selectionCell)
         }
-      }, [selectionCell, scrollTo])
+      }, [selectionCell, scrollTo, stickyFirstColumn])
 
       // Scroll to the active cell when it changes
       useEffect(() => {
-        if (activeCell) {
+        if (
+          activeCell &&
+          previousStickyFirstColumn.current === stickyFirstColumn
+        ) {
           scrollTo(activeCell)
         }
-      }, [activeCell, scrollTo])
+      }, [activeCell, scrollTo, stickyFirstColumn])
+      useEffect(() => {
+        previousStickyFirstColumn.current = stickyFirstColumn
+      }, [stickyFirstColumn])
 
       const setRowData = useCallback(
         (rowIndex: number, item: T) => {
@@ -1041,6 +1078,10 @@ export const DataSheetGrid = React.memo(
         if (contextMenu && contextMenuItems.length) {
           return
         }
+        // Native scrollbar presses target the container, not a cell or an outside control.
+        if (event.target === outerRef.current) {
+          return
+        }
 
         const rightClick =
           event.button === 2 || (event.button === 0 && event.ctrlKey)
@@ -1412,11 +1453,20 @@ export const DataSheetGrid = React.memo(
               doNotScrollY: !selectionMode.rows,
             }
           )
-          setEditing(false)
+          // Small pointer movements during the opening click are not a range selection.
+          if (
+            !cursorIndex ||
+            !activeCell ||
+            cursorIndex.col !== activeCell.col ||
+            cursorIndex.row !== activeCell.row
+          ) {
+            setEditing(false)
+          }
         }
       },
       [
         scrollTo,
+        activeCell,
         selectionMode.active,
         selectionMode.columns,
         selectionMode.rows,
@@ -1959,7 +2009,8 @@ export const DataSheetGrid = React.memo(
           duplicateRows={duplicateRows}
           stopEditing={stopEditing}
           cellClassName={cellClassName}
-          onScroll={onScroll}
+          onScroll={handleScroll}
+          stickyFirstColumn={stickyFirstColumn}
         >
           <SelectionRect
             columnRights={columnRights}
@@ -1977,6 +2028,8 @@ export const DataSheetGrid = React.memo(
             editing={editing}
             isCellDisabled={isCellDisabled}
             expandSelection={expandSelection}
+            stickyFirstColumn={stickyFirstColumn}
+            scrollLeft={scrollLeft}
           />
         </Grid>
         <div

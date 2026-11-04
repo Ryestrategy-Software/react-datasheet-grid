@@ -577,3 +577,50 @@
   pointer-events: none;
   background: rgba(0, 0, 0, 0.03);
 }
+
+/* Native sticky positioning keeps the first column aligned during compositor scrolling. */
+.dsg-row-sticky-first {
+  display: flex;
+}
+.dsg-row-sticky-first > .dsg-cell {
+  flex-shrink: 0;
+}
+.dsg-row-sticky-first > .dsg-cell-sticky-right {
+  transform: none;
+}
+.dsg-cell-sticky-left {
+  position: sticky;
+  z-index: 30;
+  border-right: solid 1px var(--dsg-border-color);
+}
+
+/* The backing preserves translucent error/selection surfaces over scrolling cells. */
+.dsg-row-sticky-first::before {
+  content: '';
+  position: sticky;
+  left: 0;
+  width: var(--dsg-frozen-width);
+  height: 100%;
+  flex-shrink: 0;
+  margin-right: calc(-1 * var(--dsg-frozen-width));
+  transform: translateX(var(--dsg-gutter-width));
+  background: white;
+  z-index: 29;
+  pointer-events: none;
+}
+.dsg-frozen-overlay-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.dsg-frozen-overlay {
+  position: sticky;
+  left: var(--dsg-gutter-width);
+  width: 0;
+  height: 100%;
+  z-index: 31;
+}
+.dsg-frozen-overlay .dsg-expand-rows-indicator {
+  pointer-events: auto;
+}

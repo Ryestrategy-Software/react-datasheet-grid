@@ -1,5 +1,5 @@
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
-import React, { ReactNode, RefObject, useEffect } from 'react'
+import React, { ReactNode, RefObject, useEffect, useState } from 'react'
 import {
   Cell,
   Column,
@@ -36,6 +36,7 @@ export const Grid = <T extends any>({
   insertRowAfter,
   stopEditing,
   onScroll,
+  stickyFirstColumn = false,
 }: {
   data: T[]
   columns: Column<T, any, any>[]
@@ -43,6 +44,7 @@ export const Grid = <T extends any>({
   innerRef: RefObject<HTMLDivElement | null>
   columnWidths?: number[]
   hasStickyRightColumn: boolean
+  stickyFirstColumn?: boolean
   displayHeight: number
   headerRowHeight: number
   rowHeight: (index: number) => { height: number }
@@ -62,6 +64,12 @@ export const Grid = <T extends any>({
   stopEditing: (opts?: { nextRow?: boolean }) => void
   onScroll?: React.UIEventHandler<HTMLDivElement>
 }) => {
+  // Keep the editor mounted through blur so deferred text commits before virtualization removes it.
+  const [editingCell, setEditingCell] = useState<Cell | null>(null)
+  useEffect(() => {
+    setEditingCell(editing ? activeCell : null)
+  }, [editing, activeCell])
+
   const rowVirtualizer = useVirtualizer({
     count: data.length,
     getScrollElement: () => outerRef.current,
@@ -86,6 +94,18 @@ export const Grid = <T extends any>({
       return index
     },
     overscan: 5,
+    rangeExtractor: (range) => {
+      const result = defaultRangeExtractor(range)
+      if (
+        editingCell &&
+        editingCell.row < data.length &&
+        !result.includes(editingCell.row)
+      ) {
+        result.push(editingCell.row)
+        result.sort((a, b) => a - b)
+      }
+      return result
+    },
   })
 
   const colVirtualizer = useVirtualizer({
@@ -100,11 +120,22 @@ export const Grid = <T extends any>({
       if (result[0] !== 0) {
         result.unshift(0)
       }
+      if (stickyFirstColumn && columns.length > 1 && !result.includes(1)) {
+        result.splice(1, 0, 1)
+      }
       if (
         hasStickyRightColumn &&
         result[result.length - 1] !== columns.length - 1
       ) {
         result.push(columns.length - 1)
+      }
+      if (
+        editingCell &&
+        editingCell.col + 1 < columns.length &&
+        !result.includes(editingCell.col + 1)
+      ) {
+        result.push(editingCell.col + 1)
+        result.sort((a, b) => a - b)
       }
       return result
     },
@@ -129,7 +160,13 @@ export const Grid = <T extends any>({
       ref={outerRef}
       className="dsg-container"
       onScroll={onScroll}
-      style={{ height: displayHeight }}
+      style={
+        {
+          height: displayHeight,
+          '--dsg-gutter-width': `${columnWidths?.[0] || 0}px`,
+          '--dsg-frozen-width': `${columnWidths?.[1] || 0}px`,
+        } as React.CSSProperties
+      }
     >
       <div
         ref={innerRef}
@@ -140,7 +177,11 @@ export const Grid = <T extends any>({
       >
         {headerRowHeight > 0 && (
           <div
-            className={cx('dsg-row', 'dsg-row-header')}
+            className={cx(
+              'dsg-row',
+              'dsg-row-header',
+              stickyFirstColumn && 'dsg-row-sticky-first'
+            )}
             style={{
               width: fullWidth ? '100%' : colVirtualizer.getTotalSize(),
               height: headerRowHeight,
@@ -155,6 +196,7 @@ export const Grid = <T extends any>({
                 }
                 width={col.size}
                 left={col.start}
+                stickyLeft={stickyFirstColumn && col.index === 1}
                 className={cx(
                   'dsg-cell-header',
                   selectionColMin !== undefined &&
@@ -182,6 +224,7 @@ export const Grid = <T extends any>({
               key={row.key}
               className={cx(
                 'dsg-row',
+                stickyFirstColumn && 'dsg-row-sticky-first',
                 typeof rowClassName === 'string' ? rowClassName : null,
                 typeof rowClassName === 'function'
                   ? rowClassName({
@@ -238,6 +281,7 @@ export const Grid = <T extends any>({
                     )}
                     width={col.size}
                     left={col.start}
+                    stickyLeft={stickyFirstColumn && col.index === 1}
                   >
                     <Component
                       rowData={data[row.index]}

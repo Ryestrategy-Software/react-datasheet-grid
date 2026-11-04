@@ -1,10 +1,7 @@
 {
-  "name": "@wasback/react-datasheet-grid",
-  "version": "4.15.1",
+  "name": "@ryestrategy/react-datasheet-grid",
+  "version": "4.15.2-rye.2",
   "description": "An Excel-like React component to create beautiful spreadsheets.",
-  "publishConfig": {
-    "access": "public"
-  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -12,7 +9,8 @@
     "start": "concurrently \"tsc --watch\" \"cpy \\\"src/**/*.css\\\" dist --watch\"",
     "format": "prettier --write src/. && prettier --write example/src/.",
     "lint": "eslint src/.",
-    "test": "jest"
+    "test": "jest",
+    "prepack": "npm run build"
   },
   "keywords": [
     "react",
@@ -29,7 +27,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wasback/react-datasheet-grid.git"
+    "url": "https://github.com/Ryestrategy-Software/react-datasheet-grid.git"
   },
   "homepage": "https://react-datasheet-grid.netlify.app/",
   "devDependencies": {
@@ -41,6 +39,7 @@
     "@types/jsdom": "^16.2.13",
     "@types/node": "^24.0.1",
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.3.0",
     "@types/throttle-debounce": "^2.1.0",
     "@typescript-eslint/eslint-plugin": "^4.28.0",
     "@typescript-eslint/parser": "^4.28.0",
@@ -74,5 +73,6 @@
     "fast-deep-equal": "^3.1.3",
     "react-resize-detector": "^12.0.2",
     "throttle-debounce": "^3.0.1"
-  }
+  },
+  "private": true
 }
