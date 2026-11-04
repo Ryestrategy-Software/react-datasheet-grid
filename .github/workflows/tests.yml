@@ -16,6 +16,6 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - run: npm ci
-      - run: npm test -- --coverage
+      - run: npm test -- --coverage --runInBand
       - run: npm run build
       - run: npm pack --dry-run

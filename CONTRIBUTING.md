@@ -55,6 +55,12 @@ npm run build
 npm pack --dry-run
 ```
 
+CI runs `npm test -- --coverage --runInBand`, then builds and checks the package.
+Coverage uses Jest's native V8 provider because the inherited Babel instrumentation
+exhausts the heap on Node 24. Keep the locked `source-map` 0.7.6 patch: the older
+0.7.3 dependency misidentifies Node's global `fetch` as a browser environment and
+fails to load its coverage source maps. These are development-tool changes only.
+
 The Jest suite covers behavior that jsdom can observe, including frozen-width
 limits and untouched deferred editors. It cannot prove browser layout or clipboard
 behavior. Before releasing grid changes, install the packed artifact in a consumer
