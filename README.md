@@ -1,6 +1,6 @@
 # @ryestrategy/react-datasheet-grid
 
-RyeStrategy's privately maintained fork of
+RyeStrategy's maintained fork of
 [@wasback/react-datasheet-grid](https://github.com/wasback/react-datasheet-grid),
 which adds React 19 support to
 [react-datasheet-grid](https://github.com/nick-keller/react-datasheet-grid).
@@ -12,21 +12,22 @@ release instructions, and the policy for incorporating upstream changes.
 
 ## Install
 
-The repository and release assets are private. A maintainer with repository access
-downloads the compiled package; application builds install a versioned copy from
-their own private repository, without an additional GitHub token:
+Install the compiled package from a versioned public GitHub Release. No GitHub
+credentials or registry configuration are required:
 
 ```bash
-mkdir -p vendor
-gh release download v4.15.2-rye.2 \
-  --repo Ryestrategy-Software/react-datasheet-grid \
-  --pattern ryestrategy-react-datasheet-grid-4.15.2-rye.2.tgz --dir vendor
-npm install ./vendor/ryestrategy-react-datasheet-grid-4.15.2-rye.2.tgz
+npm install https://github.com/Ryestrategy-Software/react-datasheet-grid/releases/download/v4.15.2-rye.2/ryestrategy-react-datasheet-grid-4.15.2-rye.2.tgz
 ```
 
-Portal already includes the archive; run its normal `bun install --frozen-lockfile`.
-Do not use a private release URL directly as a dependency or publish this package
-to a public registry. See the maintenance guide for checksums and update steps.
+Bun also accepts this URL. Commit the dependency URL and generated lockfile;
+use a frozen install in CI. Existing consumers can retain their dependency name
+as an alias. Use the attached compiled `.tgz`, not GitHub's automatic source
+archive: the source tree does not include `dist/`.
+
+This version is a validation prerelease pending review. See the release notes
+for its source commit and SHA-256, and [CONTRIBUTING.md](CONTRIBUTING.md) for
+maintenance and update instructions. The package's `private: true` flag prevents
+accidental npm publishing; it does not restrict public release downloads.
 
 ## Usage
 
@@ -72,7 +73,7 @@ Pass `stickyFirstColumn={true}` to keep the first data column and its header
 visible during horizontal scrolling. The default is `false`; the row-number
 gutter is separate. This works with both the default and dynamic grid exports.
 The consumer owns any toggle, context-menu label, or persistence of this setting.
-The library does not know about Employees or a column named Name.
+The library does not interpret application-specific field names.
 
 The first column is capped at half the viewport remaining after the gutter, so
 other columns remain usable in a narrow container. Selection, editing, clipboard,

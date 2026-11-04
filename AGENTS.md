@@ -16,6 +16,8 @@ maintenance, verification, release, and upstream-update policy.
   to the change, and keep runtime dependencies unchanged when possible.
 
 - Use `main` for our PR base; `upstream/master` belongs to the original author.
-- Keep the source and releases private. Keep `private: true` in package.json.
-  Consumers commit verified release archives in their own private repository;
-  never embed credentials or make the package public to simplify installation.
+- This repository and its compiled GitHub Releases are public. Keep private
+  consumer code, credentials, customer data, and internal operational details out.
+- Keep `private: true` in package.json to prevent accidental npm publishing.
+  Consumers install a versioned release asset URL and commit their lockfile;
+  never embed credentials or require a checked-in release archive.
