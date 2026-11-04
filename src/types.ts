@@ -63,6 +63,8 @@ export type SelectionContextType = {
   dataLength: number
   rowHeight: (index: number) => { height: number; top: number }
   hasStickyRightColumn: boolean
+  stickyFirstColumn?: boolean
+  scrollLeft?: number
   editing: boolean
   isCellDisabled: (cell: Cell) => boolean
   headerRowHeight: number
@@ -93,7 +95,15 @@ export type AddRowsComponentProps = {
 
 export type ContextMenuItem =
   | {
-      type: 'INSERT_ROW_BELLOW' | 'DELETE_ROW' | 'DUPLICATE_ROW' | 'COPY' | 'CUT' | 'PASTE' | 'COPY_WITH_HEADERS' | 'OPEN_LINE_EDITOR'
+      type:
+        | 'INSERT_ROW_BELLOW'
+        | 'DELETE_ROW'
+        | 'DUPLICATE_ROW'
+        | 'COPY'
+        | 'CUT'
+        | 'PASTE'
+        | 'COPY_WITH_HEADERS'
+        | 'OPEN_LINE_EDITOR'
       action: () => void
       label?: string
       rowIndex?: number
@@ -137,12 +147,20 @@ export type DataSheetGridProps<T> = {
   columns?: Partial<Column<T, any, any>>[]
   gutterColumn?: SimpleColumn<T, any> | false
   stickyRightColumn?: SimpleColumn<T, any>
+  /** Keep the first data column visible while scrolling. Defaults to false. */
+  stickyFirstColumn?: boolean
   rowKey?: string | ((opts: { rowData: T; rowIndex: number }) => string)
   height?: number
   rowHeight?: number | ((opt: { rowData: T; rowIndex: number }) => number)
   headerRowHeight?: number
   addRowsComponent?:
-    | ((props: AddRowsComponentProps & { onAddClick?: (count: number) => void; translationKeys?: Partial<{ button: string; unit: string }>; showRowCountInput?: boolean }) => React.ReactElement | null)
+    | ((
+        props: AddRowsComponentProps & {
+          onAddClick?: (count: number) => void
+          translationKeys?: Partial<{ button: string; unit: string }>
+          showRowCountInput?: boolean
+        }
+      ) => React.ReactElement | null)
     | false
   createRow?: () => T
   duplicateRow?: (opts: { rowData: T; rowIndex: number }) => T

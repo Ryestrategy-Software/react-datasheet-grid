@@ -88,7 +88,8 @@ export const getColumnWidths = (
 
 export const useColumnWidths = (
   columns: Column<any, any, any>[],
-  width?: number
+  width?: number,
+  stickyFirstColumn = false
 ) => {
   const columnsHash = columns
     .map(({ basis, minWidth, maxWidth, grow, shrink }) =>
@@ -107,6 +108,12 @@ export const useColumnWidths = (
     }
 
     const columnWidths = getColumnWidths(width, columns)
+    if (stickyFirstColumn && columnWidths.length > 1) {
+      columnWidths[1] = Math.min(
+        columnWidths[1],
+        Math.max(0, (width - columnWidths[0]) / 2)
+      )
+    }
 
     let totalWidth = 0
 
@@ -122,5 +129,5 @@ export const useColumnWidths = (
       totalWidth,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [width, columnsHash])
+  }, [width, columnsHash, stickyFirstColumn])
 }

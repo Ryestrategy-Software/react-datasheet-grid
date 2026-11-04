@@ -63,7 +63,8 @@ const TextComponent = React.memo<
       // Timestamp of last focus (when focus becomes true) and last change (input change)
       // used to prevent un-necessary updates when value was not changed
       focusedAt: 0,
-      changedAt: 0,
+      // No input event yet: Strict Mode may replay mount effects.
+      changedAt: -Infinity,
       // This allows us to keep track of whether or not the user blurred the input using the Esc key
       // If the Esc key is used we do not update the row's value (only relevant when continuousUpdates is false)
       escPressed: false,
