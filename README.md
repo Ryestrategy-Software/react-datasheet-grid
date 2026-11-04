@@ -1,6 +1,6 @@
 # @ryestrategy/react-datasheet-grid
 
-RyeStrategy's maintained fork of
+RyeStrategy's privately maintained fork of
 [@wasback/react-datasheet-grid](https://github.com/wasback/react-datasheet-grid),
 which adds React 19 support to
 [react-datasheet-grid](https://github.com/nick-keller/react-datasheet-grid).
@@ -12,9 +12,21 @@ release instructions, and the policy for incorporating upstream changes.
 
 ## Install
 
+The repository and release assets are private. A maintainer with repository access
+downloads the compiled package; application builds install a versioned copy from
+their own private repository, without an additional GitHub token:
+
 ```bash
-npm install https://github.com/Ryestrategy-Software/react-datasheet-grid/releases/download/v4.15.2-rye.1/ryestrategy-react-datasheet-grid-4.15.2-rye.1.tgz
+mkdir -p vendor
+gh release download v4.15.2-rye.2 \
+  --repo Ryestrategy-Software/react-datasheet-grid \
+  --pattern ryestrategy-react-datasheet-grid-4.15.2-rye.2.tgz --dir vendor
+npm install ./vendor/ryestrategy-react-datasheet-grid-4.15.2-rye.2.tgz
 ```
+
+Portal already includes the archive; run its normal `bun install --frozen-lockfile`.
+Do not use a private release URL directly as a dependency or publish this package
+to a public registry. See the maintenance guide for checksums and update steps.
 
 ## Usage
 

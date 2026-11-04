@@ -14,3 +14,8 @@ maintenance, verification, release, and upstream-update policy.
   the consumer before release; never overwrite release tags/assets.
 - Retain upstream history and the MIT license. Avoid dependency upgrades unrelated
   to the change, and keep runtime dependencies unchanged when possible.
+
+- Use `main` for our PR base; `upstream/master` belongs to the original author.
+- Keep the source and releases private. Keep `private: true` in package.json.
+  Consumers commit verified release archives in their own private repository;
+  never embed credentials or make the package public to simplify installation.
