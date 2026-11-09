@@ -106,6 +106,7 @@ export const DataSheetGrid = React.memo(
       const hasStickyRightColumn = Boolean(stickyRightColumn)
       const innerRef = useRef<HTMLDivElement>(null)
       const outerRef = useRef<HTMLDivElement>(null)
+      const scrollbarEditorRef = useRef<HTMLElement | null>(null)
       const beforeTabIndexRef = useRef<HTMLDivElement>(null)
       const afterTabIndexRef = useRef<HTMLDivElement>(null)
       // ponytail: only the first data column can freeze; extend the API when more pinned columns are needed.
@@ -1075,11 +1076,20 @@ export const DataSheetGrid = React.memo(
 
     const onMouseDown = useCallback(
       (event: MouseEvent) => {
+        scrollbarEditorRef.current = null
         if (contextMenu && contextMenuItems.length) {
           return
         }
         // Native scrollbar presses target the container, not a cell or an outside control.
         if (event.target === outerRef.current) {
+          const focusedElement = document.activeElement
+          if (
+            editing &&
+            focusedElement instanceof HTMLElement &&
+            innerRef.current?.contains(focusedElement)
+          ) {
+            scrollbarEditorRef.current = focusedElement
+          }
           return
         }
 
@@ -1299,6 +1309,17 @@ export const DataSheetGrid = React.memo(
     useDocumentEventListener('mousedown', onMouseDown)
 
     const onMouseUp = useCallback(() => {
+      const scrollbarEditor = scrollbarEditorRef.current
+      scrollbarEditorRef.current = null
+      if (
+        editing &&
+        scrollbarEditor?.isConnected &&
+        innerRef.current?.contains(scrollbarEditor)
+      ) {
+        // Let the native scrollbar drag finish, then restore keyboard editing
+        // without scrolling back to the pinned, potentially offscreen editor.
+        scrollbarEditor.focus({ preventScroll: true })
+      }
       if (expandingSelectionFromRowIndex !== null) {
         if (expandSelectionRowsCount > 0 && activeCell) {
           let copyData: Array<Array<string>> = []
@@ -1403,6 +1424,7 @@ export const DataSheetGrid = React.memo(
         active: false,
       })
     }, [
+      editing,
       expandingSelectionFromRowIndex,
       setSelectionMode,
       expandSelectionRowsCount,
