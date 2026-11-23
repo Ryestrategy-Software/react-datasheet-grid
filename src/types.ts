@@ -38,6 +38,8 @@ export type Column<T, C, PasteValue> = {
   maxWidth?: number
   component: CellComponent<T, C>
   columnData?: C
+  /** Start editing on the first primary-button press in this column. */
+  editOnClick?: boolean
   disableKeys: boolean
   disabled: boolean | ((opt: { rowData: T; rowIndex: number }) => boolean)
   cellClassName?:
