@@ -28,6 +28,91 @@ const lazyColumns: Column[] = [
   keyColumn('lastName', createTextColumn({ continuousUpdates: false })),
 ]
 
+describe('editing across native scrollbar presses', () => {
+  beforeEach(() => {
+    // Give the virtualizer a viewport; jsdom does not perform layout.
+    jest.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(400)
+    jest.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(300)
+  })
+
+  afterEach(() => jest.restoreAllMocks())
+
+  const renderEditor = () => {
+    const ref = { current: null as unknown as DataSheetGridRef }
+    const onChange = jest.fn()
+    const view = render(
+      <>
+        <DataSheetGrid
+          value={[{ firstName: 'Original', lastName: 'Value' }]}
+          columns={lazyColumns}
+          onChange={onChange}
+          ref={ref}
+        />
+        <button>Outside</button>
+      </>
+    )
+    act(() => ref.current.setActiveCell({ col: 0, row: 0 }))
+    act(() => userEvent.keyboard('[Enter]'))
+    const editor = view.getByDisplayValue('Original') as HTMLInputElement
+    expect(editor).toHaveFocus()
+    fireEvent.change(editor, { target: { value: 'Pending draft' } })
+    const grid = view.container.querySelector('.dsg-container') as HTMLElement
+    return { ...view, editor, grid, onChange, ref }
+  }
+
+  test('restores the same draft and caret without cancelling native scrolling', () => {
+    const { editor, grid, onChange } = renderEditor()
+    editor.setSelectionRange(2, 5)
+    const focus = jest.spyOn(editor, 'focus')
+
+    expect(fireEvent.mouseDown(grid)).toBe(true)
+    act(() => editor.blur()) // Native default action, absent from fireEvent.
+    grid.scrollTop = 100
+    grid.scrollLeft = 90
+    expect(editor).not.toHaveFocus()
+    fireEvent.mouseUp(grid)
+
+    expect(editor).toHaveFocus()
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+    expect(editor).toHaveValue('Pending draft')
+    expect([editor.selectionStart, editor.selectionEnd]).toEqual([2, 5])
+    expect([grid.scrollTop, grid.scrollLeft]).toEqual([100, 90])
+    expect(onChange).not.toHaveBeenCalled()
+
+    act(() => userEvent.keyboard('[Escape]'))
+    expect(editor).toHaveValue('Original')
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  test('lets an outside click commit once and move focus away', () => {
+    const { editor, grid, onChange, getByRole } = renderEditor()
+    fireEvent.mouseDown(grid)
+    act(() => editor.blur())
+    fireEvent.mouseUp(grid)
+    const outside = getByRole('button', { name: 'Outside' })
+    act(() => userEvent.click(outside))
+
+    expect(outside).toHaveFocus()
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0][0][0].firstName).toBe('Pending draft')
+    fireEvent.mouseUp(grid)
+    expect(outside).toHaveFocus()
+  })
+
+  test('does not restore an editor after editing ends during the press', () => {
+    const { editor, grid, onChange, getByRole, ref } = renderEditor()
+    fireEvent.mouseDown(grid)
+    act(() => editor.blur())
+    const outside = getByRole('button', { name: 'Outside' })
+    act(() => ref.current.setActiveCell(null))
+    outside.focus()
+    fireEvent.mouseUp(grid)
+
+    expect(outside).toHaveFocus()
+    expect(onChange).toHaveBeenCalledTimes(1)
+  })
+})
+
 test('Type to replace', () => {
   const ref = { current: null as unknown as DataSheetGridRef }
   let finalData: any[] = []
