@@ -1,5 +1,11 @@
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
-import React, { ReactNode, RefObject, useEffect, useState } from 'react'
+import React, {
+  ReactNode,
+  RefObject,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from 'react'
 import {
   Cell,
   Column,
@@ -107,6 +113,10 @@ export const Grid = <T extends any>({
       return result
     },
   })
+
+  useLayoutEffect(() => {
+    rowVirtualizer.measure()
+  }, [rowVirtualizer, rowHeight])
 
   const colVirtualizer = useVirtualizer({
     count: columns.length,

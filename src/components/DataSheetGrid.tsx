@@ -101,6 +101,7 @@ export const DataSheetGrid = React.memo(
       ref: React.ForwardedRef<DataSheetGridRef>
     ): React.ReactElement => {
       const lastEditingCellRef = useRef<Cell | null>(null)
+      const lastMouseDownCellRef = useRef<Cell | null>(null)
       const disableContextMenu = disableContextMenuRaw || lockRows
       const columns = useColumns(rawColumns, gutterColumn, stickyRightColumn)
       const hasStickyRightColumn = Boolean(stickyRightColumn)
@@ -175,9 +176,7 @@ export const DataSheetGrid = React.memo(
           const innerRect = innerRef.current?.getBoundingClientRect()
           if (!innerRect) return
           const y = mouseEvent.clientY - innerRect.top
-          // Estimate row index
-          let rowHeightNum = typeof rowHeight === 'number' ? rowHeight : 20
-          let rowIndex = Math.floor((y - headerRowHeight) / rowHeightNum)
+          const rowIndex = getRowIndex(y - headerRowHeight)
           if (rowIndex < 0 || rowIndex >= data.length) return
           setContextMenu({
             x: mouseEvent.clientX,
@@ -210,7 +209,7 @@ export const DataSheetGrid = React.memo(
         }
         window.addEventListener('dsg-row-contextmenu', handler)
         return () => window.removeEventListener('dsg-row-contextmenu', handler)
-      }, [data.length, headerRowHeight, rowHeight])
+      }, [data, getRowIndex, headerRowHeight, onOpenLineInEditor])
 
       // True when the active cell is being edited
       const [editing, setEditing] = useState(false)
@@ -284,8 +283,11 @@ export const DataSheetGrid = React.memo(
 
       // Blur any element on focusing the grid
       useEffect(() => {
-        if (activeCell !== null) {
-          ;(document.activeElement as HTMLElement).blur()
+        const focused = document.activeElement as HTMLElement
+        const cellEditor = innerRef.current?.contains(focused) &&
+          focused.closest('.dsg-cell:not(.dsg-cell-header)')
+        if (activeCell !== null && !cellEditor) {
+          focused.blur()
           window.getSelection()?.removeAllRanges()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1098,9 +1100,14 @@ export const DataSheetGrid = React.memo(
         const clickInside =
           innerRef.current?.contains(event.target as Node) || false
 
+        // A row can resize after the first press. A double-click still belongs
+        // to that original cell, even if another row moves under the pointer.
         const cursorIndex = clickInside
-          ? getCursorIndex(event, true, true)
+          ? event.detail > 1 && lastMouseDownCellRef.current
+            ? lastMouseDownCellRef.current
+            : getCursorIndex(event, true, true)
           : null
+        lastMouseDownCellRef.current = cursorIndex
 
         if (
           !clickInside &&
@@ -1209,11 +1216,22 @@ export const DataSheetGrid = React.memo(
           )
         }
 
-        if (clickOnActiveCell && !rightClick) {
-          lastEditingCellRef.current = activeCell
-        }
+        const editOnFirstClick =
+          cursorIndex &&
+          event.button === 0 &&
+          !event.shiftKey &&
+          cursorIndex.row >= 0 &&
+          cursorIndex.col >= 0 &&
+          !clickOnStickyRightColumn &&
+          columns[cursorIndex.col + 1].editOnClick &&
+          !isCellDisabled(cursorIndex)
+        const editCell =
+          !rightClick && (clickOnActiveCell || editOnFirstClick)
+            ? cursorIndex
+            : null
+        if (editCell) lastEditingCellRef.current = editCell
 
-        setEditing(Boolean(clickOnActiveCell && !rightClick))
+        setEditing(editCell !== null)
         setSelectionMode(
           cursorIndex && !rightClick
             ? {
